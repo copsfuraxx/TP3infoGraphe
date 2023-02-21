@@ -1,0 +1,15 @@
+{
+  "name": "miniprojet",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "build": "netlify-lambda build express",
+    "start": "nodemon server-local.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

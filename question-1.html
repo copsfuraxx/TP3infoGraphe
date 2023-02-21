@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>A small introduction to three.js webgl [1]</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link rel="stylesheet" href="css/basic.css">
+  
+    <script src="three.js"></script>
+    <script src="js/Detector.js"></script>
+    <script src="js/OrbitControls.js"></script>
+    <script type="text/javascript">
+      
+      // Checks that your browser supports WebGL. 
+      if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+      
+      var renderer = null; 
+      var scene = null;
+      var camera = null;
+      var soleil = null;
+	  var terre = null;
+	  var lune = null;
+      var curTime = Date.now();
+	  var cameraAngle = 0;
+	  var controls = null;
+	  const systemeSolaire = new THREE.Group();
+	  const terreLune = new THREE.Group();
+	  const luneGroup = new THREE.Group();
+      
+      function init() {
+
+	  var canvas = document.getElementById("webglcanvas");
+	  console.log( canvas );
+	  
+	  renderer = new THREE.WebGLRenderer( { canvas: canvas, antialias: true } );
+	  renderer.setSize( canvas.width, canvas.height );
+	  renderer.shadowMap.enabled = true;
+	  // rendu coûteux mais plus joli (default: THREE.PCFShadowMap)
+	  renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+
+	  scene = new THREE.Scene();
+
+	  var path = "images/MilkyWay/";
+	  var format = '.jpg';
+	  var urls = [
+		path + 'posx' + format, path + 'negx' + format,
+		path + 'posy' + format, path + 'negy' + format,
+		path + 'posz' + format, path + 'negz' + format
+	  ];
+	
+	  var textureCube    = new THREE.CubeTextureLoader().load( urls );
+	  textureCube.format = THREE.RGBFormat;
+	  scene.background   = textureCube;
+
+	  camera = new THREE.PerspectiveCamera( 45, canvas.width / canvas.height, 1, 4000 );
+
+	  controls = new THREE.OrbitControls( camera, renderer.domElement );
+	  controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+	  controls.dampingFactor = 0.25;
+	  controls.screenSpacePanning = false;
+	  controls.minDistance = -20;
+	  controls.maxDistance = 20;
+
+	  var map = new THREE.TextureLoader().load( "images/earth_atmos_2048.jpg" );
+	  
+	  var material = new THREE.MeshPhongMaterial({
+		map : map
+	  })
+
+	  var geometry = new THREE.SphereGeometry(0.5, 32, 32)
+
+	  terre = new THREE.Mesh(geometry, material);
+
+	  terre.position.x = 6;
+	  terre.rotation.x = Math.PI / 5;
+	  terre.rotation.y = Math.PI / 5;
+	  terre.castShadow = true;
+	  terre.receiveShadow = true;
+	  terreLune.add( terre );
+
+	  map = new THREE.TextureLoader().load( "images/moon_1024.jpg" );
+	  material = new THREE.MeshPhongMaterial({
+		map : map
+	  })
+	  geometry = new THREE.SphereGeometry(0.2, 32, 32)
+	  lune = new THREE.Mesh(geometry, material);
+
+	  lune.position.x = -1;
+	  lune.rotation.x = Math.PI / 5;
+	  lune.rotation.y = Math.PI / 5;
+	  lune.castShadow = true;
+	  lune.receiveShadow = true;
+
+	  luneGroup.position.x = 6;
+	  luneGroup.add(lune);
+
+	  terreLune.add(luneGroup);
+
+	  systemeSolaire.add(terreLune);
+
+	  light = new THREE.PointLight( 0xffffff, 1.5);
+	  light.castShadow = true;
+	  // On peut aussi paramétrer la qualité du calcul
+	  light.shadow.mapSize.width = 512;  // default
+	  light.shadow.mapSize.height = 512; // default
+	  light.shadow.camera.near = 0.5;    // default
+	  light.shadow.camera.far = 50;
+	  systemeSolaire.add( light );
+
+	  geometry = new THREE.SphereGeometry(1, 32, 32)
+
+	  material = new THREE.MeshBasicMaterial({
+		color : 0xffff00
+	  });
+
+	  soleil = new THREE.Mesh(geometry, material);
+
+	  soleil.rotation.x = Math.PI / 5;
+	  soleil.rotation.y = Math.PI / 5;
+
+	  systemeSolaire.position.z = -16;
+	  systemeSolaire.add(soleil);
+
+	  scene.add(systemeSolaire)
+      }
+      
+      // This function is called regularly to update the canvas webgl.
+      function run() {
+	  // Ask to call again run 
+	  requestAnimationFrame( run );
+	  
+	  // Render the scene
+	  render();
+	  
+	  // Calls the animate function if objects or camera should move
+	  animate();
+      }
+      
+      // This function is called regularly to take care of the rendering.
+      function render() {
+	  // Render the scene
+	  renderer.render( scene, camera );
+      }
+      
+      // This function is called regularly to update objects.
+      function animate() {
+	  // Computes how time has changed since last display
+	  var now       = Date.now();
+	  var deltaTime = now - curTime;
+	  curTime       = now;
+	  var fracTime  = deltaTime / 1000; // in seconds
+	  // Now we can move objects, camera, etc.
+	  // Example: rotation cube
+	  var angle = 0.1 * Math.PI * 2 * fracTime; // one turn per 10 second.
+	  var angle = fracTime * Math.PI * 2;
+	  // Notez que l'axe y est l'axe "vertical" usuellement.
+	  terreLune.rotation.y += angle / 365; // la terre tourne en 365 jours
+	  terre.rotation.y      += angle; // et en un jour sur elle-même
+	  luneGroup.rotation.y  += angle / 28; // la lune tourne en 28 jours autour de la terre
+	  lune.rotation.y       += angle /28; // et en 28 jours aussi sur elle-même pour faire face à la terre
+	  controls.update();
+	  controls.target = new THREE.Vector3().setFromMatrixPosition(terre.matrixWorld);
+	}
+      
+    </script>
+  </head>
+  <body>
+    <div id="info"> a first three.js example </div>
+    <canvas id="webglcanvas" style="border: none;background-color:#000000"
+	    width="1600" height="900"></canvas>
+    <!-- We run the WebGL code at the end to be sure that the document is loaded.
+      -->
+    <script>
+      init(); run();
+    </script> 
+  </body>
+</html>
